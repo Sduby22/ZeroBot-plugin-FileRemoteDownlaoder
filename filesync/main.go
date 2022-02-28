@@ -13,7 +13,8 @@ import (
 
 var groupNameMap sync.Map
 
-const server = "https://tony.sduby.top/api/remoteDownload"
+const SERVER = "http://localhost:3010/remoteDownload"
+const MAXSIZE = 300 * 1024 * 1024
 
 func getGroupName(id int64, ctx *zero.Ctx) string {
 	if name, ok := groupNameMap.Load(id); ok {
@@ -33,7 +34,7 @@ func callRemoteDownload(filename string, fileurl string, groupname string) {
 	}
 	jsonvalue, _ := json.Marshal(data)
 	log.Println(string(jsonvalue))
-	resp, err := http.Post(server, "application/json", bytes.NewBuffer(jsonvalue))
+	resp, err := http.Post(SERVER, "application/json", bytes.NewBuffer(jsonvalue))
 	if err != nil {
 		log.Printf("error calling api %v", err)
 	}
@@ -44,6 +45,10 @@ func main() {
 	zero.OnNotice().Handle(func(ctx *zero.Ctx) {
 		file := ctx.Event.File
 		if ctx.Event.NoticeType != "group_upload" {
+			return
+		}
+
+		if file.Size > MAXSIZE {
 			return
 		}
 
@@ -61,9 +66,9 @@ func main() {
 		go callRemoteDownload(filename, url, groupname)
 	})
 
-        zero.OnCommand("hello", zero.SuperUserPermission).Handle(func(ctx *zero.Ctx) {
-                ctx.Send("world")
-        })
+	zero.OnCommand("hello", zero.SuperUserPermission).Handle(func(ctx *zero.Ctx) {
+		ctx.Send("world")
+	})
 
 	zero.RunAndBlock(zero.Config{
 		NickName:      []string{"bot"},
